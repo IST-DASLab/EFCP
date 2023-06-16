@@ -11,9 +11,9 @@ def get_arg_parse():
     parser.add_argument('--wandb_name', type=str, required=True, default=None, help='The name for the experiment in wandb runs')
     parser.add_argument('--wandb_job_type', type=str, default=None, required=True, help='The wandb job type')
     parser.add_argument('--rank', type=int, default=None, required=False, help='Rank to be used in Low-Rank MFAC')
-    parser.add_argument('--fix_mask_after_epoch', type=int, default=0, required=False,
-                        help='Fix the mask after this many epochs of top-k (including warmup). E.g.: warmup=10 (dense training) and '
-                             'fix_mask_after_epoch=12 (top-k for epochs 10, 11 and then dense training with top-k mask starting with epoch 12')
+    # parser.add_argument('--fix_mask_after_epoch', type=int, default=0, required=False,
+    #                     help='Fix the mask after this many epochs of top-k (including warmup). E.g.: warmup=10 (dense training) and '
+    #                          'fix_mask_after_epoch=12 (top-k for epochs 10, 11 and then dense training with top-k mask starting with epoch 12')
     parser.add_argument('--warmup', type=int, default=0, required=False, help='Perform full dense training for `warmup` steps, then perform top-k training.')
     parser.add_argument('--model', type=str, required=True, choices=['logreg', 'rn18', 'rn20', 'rn32', 'rn50', 'mn', 'wrn-22-2', 'wrn-40-2', 'wrn-22-4'], help='Type of model to train.')
     parser.add_argument('--dataset_path', type=str, required=True, help='Path to dataset to use for training.')
@@ -32,8 +32,8 @@ def get_arg_parse():
     parser.add_argument('--ngrads', type=int, required=False, help='Size of the gradient buffer to use for the M-FAC optimizer.')
     parser.add_argument('--batch_size', type=int, required=True, help='Batchsize to use for training.')
     parser.add_argument('--momentum', type=float, required=False, help='Momentum to use for the optimizer.')
-    parser.add_argument('--grad_momentum', type=float, required=False, default=0, help='Momentum to use for the gradient before feeding it to the MFAC optimizer.')
-    parser.add_argument('--grad_norm_recovery', type=float, required=False, default=0, choices=[0, 1], help='Boolean indicating whether gtradient norm recovery should applied')
+    # parser.add_argument('--grad_momentum', type=float, required=False, default=0, help='Momentum to use for the gradient before feeding it to the MFAC optimizer.')
+    # parser.add_argument('--grad_norm_recovery', type=float, required=False, default=0, choices=[0, 1], help='Boolean indicating whether gtradient norm recovery should applied')
     # parser.add_argument('--momentum_dampening', type=float, required=True, help='Momentum dampening to use for the optimizer when momentum > 0, according to SGD algorithm here: https://pytorch.org/docs/stable/generated/torch.optim.SGD.html.')
     parser.add_argument('--weight_decay', type=float, default=0, required=False, help='Weight decay to use for the optimizer.')
     parser.add_argument('--lr', type=float, required=True, help='Learning rate')
@@ -51,7 +51,7 @@ def get_arg_parse():
     parser.add_argument('--use_sparse_tensors', type=int, required=False, default=0, choices=[0, 1], help='Specify whether you want to use sparse tensors in MFAC or not')
     parser.add_argument('--use_sparse_cuda', type=int, required=False, default=0, choices=[0, 1], help='Specify whether you want to use CUDA kernels for sparse MFAC or not')
     parser.add_argument('--profile', action='store_true', default=False, required=False, help='Use this parameter if you want to profile the step method of the optimizer')
-    parser.add_argument('--use_sq_newton', type=int, choices=[0, 1], required=False, default=0, help='Whether to use Squared Newton (precondition twice)')
+    # parser.add_argument('--use_sq_newton', type=int, choices=[0, 1], required=False, default=0, help='Whether to use Squared Newton (precondition twice)')
     parser.add_argument('--wd_type', type=str, choices=['wd', 'reg', 'both'], required=True, default='wd', help='Regularization type')
     parser.add_argument('--ignore_checks', type=int, choices=[0, 1], required=False, default=1, help='Whether to ignore loss/accuracy checks or not')
     parser.add_argument('--clip_grad_val', type=float, required=False, default=0, help='gradient clipping value')

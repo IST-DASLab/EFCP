@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from helpers.layer_manipulation import get_param_groups
 from helpers.lr_scheduling import update_lr
 from helpers.mylogger import MyLogger
-from helpers.training import *
+from helpers.training import get_optimizer, get_model
 
 from lib.data.datasets import *
 from args.args_mfac import *
@@ -178,7 +178,7 @@ def main():
     os.makedirs('initial_models', exist_ok=True)
     model_name = f'initial_models/{args.dataset_name}_{args.model}_{args.seed}.pt'
     if args.load_random_model == 1:
-        if not isfile(model_name):
+        if not os.path.isfile(model_name):
             save_random_model(model, args.dataset_name, args.model, args.seed)
         model.load_state_dict(torch.load(model_name))
         print(f'Loaded model {args.model} with seed {args.seed}')

@@ -134,15 +134,15 @@ def quantify_preconditioning(g, u, return_distribution=True, use_abs=True):
 
 
 @torch.no_grad()
-def compute_topk(vector, k, device, layerwise_topk, layerwise_index_pairs):
-    if layerwise_topk and layerwise_index_pairs is not None:
+def compute_topk(vector, k, device, layerwise_index_pairs):
+    if layerwise_index_pairs is None:
+        topk_indices = torch.topk(torch.abs(vector), k=k, sorted=False).indices
+    else:
         topk_indices = []
         for start, end in layerwise_index_pairs:
             idx = torch.topk(torch.abs(vector[start:end]), k=int(k * (end-start)), sorted=False).indices + start
             topk_indices.append(idx)
         topk_indices = torch.cat(topk_indices)
-    else:
-        topk_indices = torch.topk(torch.abs(vector), k=k, sorted=False).indices
     mask = torch.zeros_like(vector).to(device)
     mask[topk_indices] = 1.
     vector_topk = vector * mask
@@ -150,9 +150,9 @@ def compute_topk(vector, k, device, layerwise_topk, layerwise_index_pairs):
 
 
 @torch.no_grad()
-def apply_topk(lr, k, error, vector, use_ef, device, layerwise_topk, layerwise_index_pairs):
+def apply_topk(lr, k, error, vector, use_ef, device, layerwise_index_pairs):
     acc = error + lr * vector
-    acc_topk, topk_indices, mask = compute_topk(vector=acc, k=k, device=device, layerwise_topk=layerwise_topk, layerwise_index_pairs=layerwise_index_pairs)
+    acc_topk, topk_indices, mask = compute_topk(vector=acc, k=k, device=device, layerwise_index_pairs=layerwise_index_pairs)
     if use_ef:
         error = acc - acc_topk
     return error, acc, acc_topk, mask, topk_indices

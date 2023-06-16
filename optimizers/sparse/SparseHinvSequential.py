@@ -25,6 +25,7 @@ try:
 except Exception as e:
     USE_CUDA = False
 
+
 class SparseHinvSequential:
 
     # `dev` is the device where all the coefficient calculation happens
@@ -33,10 +34,9 @@ class SparseHinvSequential:
     # `gpus` ... list of GPUs across which to split stored gradients
     # `damp` ... dampening constant $\lambda$
     # @profile
-    def __init__(self, m, d, nnz, fix_scaling, dev, gpus, damp):
+    def __init__(self, m, d, nnz, dev, gpus, damp):
         if USE_CUDA and m % 32 != 0 or m > 1024:
             raise ValueError('CUDA implementation currently on supports $m$ < 1024 and divisible by 32.')
-        self.fix_scaling = fix_scaling
         self.cuda_profile = False
         self.m = m
         self.d = d
@@ -99,24 +99,7 @@ class SparseHinvSequential:
             for i in range(max(self.last, 1), self.m):
                 self.coef[i, :i] = tmp[i, :i].matmul(self.coef[:i, :i])
 
-    def setup_fixed(self):
-        min_m_grads = min(self.m, self.grads_count)
-        self.giHig = self.lambd * self.dots
-        diag_m = torch.diag(torch.full(size=[self.m], fill_value=min_m_grads, device=self.dev, dtype=self.dtype))
-        self.giHig = torch.lu(self.giHig + diag_m, pivot=False)[0]
-        self.giHig = torch.triu(self.giHig - diag_m)
-        self.denom = min_m_grads + torch.diagonal(self.giHig)
-        tmp = -self.giHig.t().contiguous() / self.denom.reshape((1, -1))
-
-        if USE_CUDA:
-            diag_lambd = torch.diag(torch.full(size=[self.m], fill_value=self.lambd, device=self.dev, dtype=self.dtype))
-            self.coef = hinv_cuda.hinv_setup(tmp, diag_lambd)
-        else:
-            for i in range(max(self.last, 1), self.m):
-                self.coef[i, :i] = tmp[i, :i].matmul(self.coef[:i, :i])
-
     # @profile
-    # Replace oldest gradient with `g` and then calculate the IHVP with `g`
     def integrate_gradient_and_precondition(self, g, indices, x):
         """
         returns update inv(F) * g = 1/lambda * g - linear_combination_of_gradients (tmp contains linear comb params)
@@ -131,7 +114,7 @@ class SparseHinvSequential:
 
     def integrate_gradient_and_precondition_twice(self, g, indices, x):
         """
-        returns update inv(F) * g = 1/lambda * g - linear_combination_of_gradients (tmp contains linear comb params)
+        Returns update inv(F) * g = 1/lambda * g - linear_combination_of_gradients (tmp contains linear comb params)
         :param g: tensor with zeros, but in dense format
         :param indices:
         :return:
@@ -155,7 +138,6 @@ class SparseHinvSequential:
         return tmp
 
     # @profile
-    # Distributed `grads[j, :] = g`
     def set_grad(self, row_index, values, indices):
         self.grads_count += 1
         for idx_gpu, gpu in enumerate(self.gpus):
@@ -176,13 +158,7 @@ class SparseHinvSequential:
         aggregate(self.result_m, self.gpus_count)
         return self.result_m[0].to(self.dev)
 
-        # if self.cuda_profile and self.grads_count >= self.m:
-        #     torch.cuda.nvtx.range_push(f'[grads_matmul_sequential][for]step@{self.grads_count}')
-        # if self.cuda_profile and self.grads_count >= self.m:
-        #     torch.cuda.nvtx.range_pop()
-
     # @profile
-    # Product with inverse of dampened empirical Fisher
     def precondition(self, g, dots=None):
         """
             Returns the update inv(F) * x
@@ -195,27 +171,12 @@ class SparseHinvSequential:
             dots = self.compute_scalar_products(g)
         giHix = self.lambd * dots
         if USE_CUDA:
-            rows = self.m
-            if self.fix_scaling:
-                rows = min(self.grads_count, self.m)
-            # print(f'\tgiHix norm before cuda call = {giHix.norm()}')
-            giHix = hinv_cuda.hinv_mul(rows, self.giHig, giHix)
-            # print(f'\tgiHix norm after cuda call = {giHix.norm()}')
+            giHix = hinv_cuda.hinv_mul(self.m, self.giHig, giHix)
         else:
             for i in range(1, self.m):
                 giHix[i:].sub_(self.giHig[i - 1, i:], alpha=giHix[i - 1] / self.denom[i - 1])
         M = (giHix / self.denom).matmul(self.coef) # .view(-1, 1) # view is linked to matmul_grads_sequential_batch
 
-        # print(f'\tgrads count = {self.grads_count}')
-        # print(f'\tgiHix.size() = {giHix.size()}')
-        # print(f'\tdenom.size() = {self.denom.size()}')
-        # print(f'\tcoef.size = {self.coef.size()}')
-        # print(f'\tM.size() = {M.size()}')
-        # print(f'\tg.size() = {g.size()}')
-        # print(f'\tgiHix norm = {giHix.norm()}')
-        # print(f'\tdenom norm = {self.denom.norm()}')
-        # print(f'\tM.norm = {M.norm()}')
-        # print(f'\tg.norm = {g.norm()}')
         partA = self.lambd * g
         partB = self.compute_linear_combination(M)
         self.wandb_data.update(dict(norm_partA=partA.norm(p=2), norm_partB=partB.norm(p=2)))

@@ -39,6 +39,7 @@ def local_sgd(params,
     update = torch.cat(update) # added by ionut
     return update
 
+
 class SparseSGD(Optimizer):
     def __init__(self, model, k_init=None, lr=1e-3, momentum=0, dampening=0,
                  weight_decay=0, nesterov=False):

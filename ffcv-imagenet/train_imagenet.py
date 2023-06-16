@@ -131,7 +131,6 @@ Section('custom', 'mfac params').params(
     adaptive_damp=Param(int, 'whether to use adaptive damping or not', default=0),
     topk_lr_on_update=Param(int, 'whether to use lr on model update', default=1),
     rescaling_kfac64=Param(int, 'whether to apply rescaling from K-FAC paper - section 6.4', default=0),
-    zerorize_error=Param(int, 'whether to zerorize error feedback accumulator', default=0),
     switch_to_sgd=Param(float, 'float indicating the percentage of training when to switch from (KG)MFAC to SGD', default=0),
     rt=Param(int, 'whether to resume training or not. If set to 1, then the next rt params will be used', default=0),
     rt_path=Param(str, 'path to a switch_artefacts/MFAC-or-KGMFAC folder', default='', required=False),
@@ -596,7 +595,6 @@ class ImageNetTrainer:
     @param('training.epochs')
     @param('logging.log_level')
     @param('training.optimizer')
-    @param('custom.zerorize_error')
     @param('custom.switch_to_sgd')
     @param('custom.rt')
     @param('custom.rt_epoch')
@@ -606,7 +604,7 @@ class ImageNetTrainer:
     @param('lr.lr_schedule_type')
     @param('custom.swa_start_epoch')
     @param('custom.use_bn_model')
-    def train(self, epochs, log_level, optimizer, zerorize_error, switch_to_sgd, rt, rt_epoch, rt_path, rt_type, lr_peak_epoch, lr_schedule_type, swa_start_epoch, use_bn_model):
+    def train(self, epochs, log_level, optimizer, switch_to_sgd, rt, rt_epoch, rt_path, rt_type, lr_peak_epoch, lr_schedule_type, swa_start_epoch, use_bn_model):
         start_train = time.time()
         checkpoint_epochs = [0, lr_peak_epoch, int(0.25 * epochs), int(0.50 * epochs), int(0.66 * epochs), int(0.75 * epochs)]
         print(f'TORCH CUDA: {torch.cuda.is_available()}', file=sys.stderr)
@@ -617,9 +615,6 @@ class ImageNetTrainer:
             start_epoch = time.time()
             train_loss = self.train_loop(epoch)
             epoch_time = time.time() - start_epoch
-
-            if (zerorize_error == 1) and ('kgmfac' == optimizer):
-                self.optimizer.zerorize_error()
 
             # switch from (KG)MFAC to SGD at a specific percentage of training (SGD starts from scratch then)
             if switch_to_sgd > 0 and ('mfac' in optimizer) and (epoch+1 == int(epochs * switch_to_sgd)):

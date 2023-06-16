@@ -175,7 +175,7 @@ python main.py \
     --wd_type wd
 ```
 
-<strong>Logistic Regression / Synthetic Data.</strong> For this experiment we use the same script `main.py` using the hyper-parameters from the <strong>Appendix A</strong> in our paper. The dataset we used is publicly available `here`. Below we only present the script to run `Sparse GGT`. In order to run other optimizers, please have a look at file `` that stores command line arguments and at this method that returns the optimizer.
+<strong>Logistic Regression / Synthetic Data.</strong> For this experiment we use the same script `main.py` using the hyper-parameters from the <strong>Appendix A</strong> in our paper. The dataset we used is publicly available [here](https://seafile.ist.ac.at/lib/7ae0eddc-4f66-4103-8aba-37ea22d34901/file/NeurIPS2023-EFCP/RN50x16-openai-imagenet1k.zip?dl=1). Below we only present the script to run `Sparse GGT`. In order to run other optimizers, please have a look at the method `get_optimizer` from [`helpers/training.py`](https://github.com/IST-DASLab/EFCP/blob/main/helpers/training.py) file and at the method `get_arg_parse` from [args/args_mfac.py](https://github.com/IST-DASLab/EFCP/blob/main/args/args_mfac.py) that stores command line arguments.
 
 ```shell
 $ export EFCP_ROOT=~/EFCP # the root folder will be added as a library path
