@@ -7,7 +7,7 @@ The official project repository for the [EFCP paper](https://arxiv.org/abs/2306.
 Suppose the project is in the home directory `~/EFCP`, the CUDA kernels can be installed using the following commands:
 
 ```shell
-$ cd ~/EFCP/custom_cuda_kernels/cuda_kernel_mfac
+$ cd ~/EFCP/cuda/mfac_kernel
 $ python setup_cuda.py install
 ```
 
