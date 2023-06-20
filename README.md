@@ -204,6 +204,6 @@ $ CUDA_VISIBLE_DEVICES=0 python main.py \
 
 ## Quantify Preconditioning
 
-We describe the preconditioning quantification in <strong>Section 6</strong> of our paper. We use `this method` to compute the metrics for scaling and rotation, which requires the raw gradient `g` and the preconditioned gradient `u`. We would like to mention that calling this method at each time step for large models (such as BERT-Base) slows down training by a lot because the operations are performed using large tensors.
+We describe the preconditioning quantification in <strong>Section 6</strong> of our paper. We use [quantify_preconditioning](https://github.com/IST-DASLab/EFCP/blob/main/helpers/optim.py#L103) method to compute the metrics for scaling and rotation, which requires the raw gradient `g` and the preconditioned gradient `u`. We would like to mention that calling this method at each time step for large models (such as BERT-Base) slows down training by a lot because the operations are performed using large tensors.
 
 <strong></strong>
