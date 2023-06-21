@@ -206,4 +206,17 @@ $ CUDA_VISIBLE_DEVICES=0 python main.py \
 
 We describe the preconditioning quantification in <strong>Section 6</strong> of [our paper](https://arxiv.org/abs/2306.06098). We use [quantify_preconditioning](https://github.com/IST-DASLab/EFCP/blob/main/helpers/optim.py#L103) method to compute the metrics for scaling and rotation, which requires the raw gradient `g` and the preconditioned gradient `u`. We would like to mention that calling this method at each time step for large models (such as BERT-Base) slows down training by a lot because the operations are performed using large tensors. Moreover, the quantiles are computed in `numpy` because `pytorch` raises an error when calling `quantile` function for large tensors.
 
-<strong></strong>
+## Cite
+
+If you found our work useful, please consider citing:
+
+```
+@misc{modoranu2023error,
+      title={Error Feedback Can Accurately Compress Preconditioners}, 
+      author={Ionut-Vlad Modoranu and Aleksei Kalinov and Eldar Kurtic and Dan Alistarh},
+      year={2023},
+      eprint={2306.06098},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
