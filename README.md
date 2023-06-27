@@ -77,8 +77,9 @@ $ CUDA_VISIBLE_DEVICES=0 python train.py \
     --ngrads 1024 \
     --momentum 0 \
     --dataset cifar10 \
-    --optim kgmfac \
+    --optim <kgmfac OR lrmfac> \
     --k 0.01 \
+    --rank 4 \
     --epochs 20 \
     --batch_size 32 \
     --model rn18 \
@@ -152,8 +153,9 @@ python run_qa.py \
     --logging_steps 10 \
     --model_name_or_path bert-base \
     --num_train_epochs 2 \
-    --optim kgmfac \
+    --optim <kgmfac OR lrmfac> \
     --k 0.01 \
+    --rank 4 \
     --ngrads 1024 \
     --lr 3e-5 \
     --damp 5e-5
