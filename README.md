@@ -110,12 +110,31 @@ python run_glue.py \
     --logging_steps 10 \
     --model_name_or_path bert-base \
     --task_name mnli \
-    --optim kgmfac \
     --num_train_epochs 3 \
+    --optim <kgmfac OR lrmfac> \
+    --k 0.01 \
+    --rank 4 \
     --lr 2e-5 \
     --damp 5e-5 \
-    --ngrads 1024 \
-    --k 0.01
+    --ngrads 1024
+```
+
+All available arguments are available in the following classes:
+- [ModelArguments](https://github.com/IST-DASLab/EFCP/blob/main/huggingface/examples/MFAC/run_glue.py#L184)
+- [DataTrainingArguments](https://github.com/IST-DASLab/EFCP/blob/main/huggingface/examples/MFAC/run_glue.py#L90)
+- [TrainingArguments](https://github.com/IST-DASLab/EFCP/blob/main/huggingface/transformers/training_args.py#L70)
+- [CustomArgs](https://github.com/IST-DASLab/EFCP/blob/main/args/args_nlp.py#L5): stores our arguments for M-FAC optimizers and we are using `lr` from here instead of `learning_rate` from `DataTrainingArguments`
+
+Other useful parameters for the `run_glue.py` script:
+```shell
+--do_train 
+--do_eval 
+--do_predict 
+--max_seq_length 128 
+--per_device_train_batch_size 32 
+--overwrite_output_dir 
+--save_strategy epoch # instead of logging_strategy and logging_steps that we used
+--save_total_limit 1 
 ```
 
 <strong>Instructions for QA/SquadV2.</strong> Run Sparse-MFAC on BERT-Base:
@@ -132,12 +151,12 @@ python run_qa.py \
     --logging_strategy steps \
     --logging_steps 10 \
     --model_name_or_path bert-base \
-    --optim kgmfac \
     --num_train_epochs 2 \
-    --lr 3e-5 \
-    --damp 5e-5 \
+    --optim kgmfac \
+    --k 0.01 \
     --ngrads 1024 \
-    --k 0.01
+    --lr 3e-5 \
+    --damp 5e-5
 ```
 
 
@@ -148,6 +167,13 @@ We use our own training pipeline to train a small ResNet-20 on CIFAR-10 and for 
 
 <strong>CIFAR-10 / ResNet-20 (272k params).</strong> For these particular experiments, check the parameters in the <strong>Appendix C</strong> of the paper and match them with the ones in `~/EFCP/args/args_mfac.py`
 
+
+<strong>Follow these short instructions to run Top-K or Low-Rank strategies:</strong>
+
+- <strong>S-MFAC</strong> (Top-k compression):
+  - use `--optim kgmfac` & `--k 0.01` (the parameter `--rank` will be ignored)
+- <strong>LR-MFAC</strong> (Low-Rank compression):
+  - use `--optim lrmfac` & `--rank 1` -- (the parameter `--k` will be ignored)  
 
 ```shell
 $ export EFCP_ROOT=~/EFCP # the root folder will be added as a library path
@@ -161,12 +187,13 @@ python main.py \
     --root_folder @EXPERIMENT_FOLDER \
     --dataset_path @PATH_TO_DATASET \
     --dataset_name cifar10 \
-    --optim kgmfac \
     --model rn20 \
     --epochs 164 \
     --batch_size 128 \
     --lr_sched step \
+    --optim <kgmfac OR lrmfac> \
     --k 0.01 \
+    --rank 4 \
     --ngrads 1024 \
     --lr 1e-3 \
     --damp 1e-4 \
@@ -188,11 +215,11 @@ $ CUDA_VISIBLE_DEVICES=0 python main.py \
     --root_folder @EXPERIMENT_FOLDER \
     --dataset_path @PATH_TO_RN50x16-openai-imagenet1k \
     --dataset_name rn50x16openai \
-    --optim ksggt \
     --model logreg \
     --epochs 10 \
     --batch_size 128 \
     --lr_sched cos \
+    --optim ksggt \
     --k 0.01 \
     --ngrads 100 \
     --lr 1 \
