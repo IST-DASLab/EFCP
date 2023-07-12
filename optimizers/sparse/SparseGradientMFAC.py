@@ -49,6 +49,7 @@ class SparseGradientMFAC(torch.optim.Optimizer):
         self.k = None
         self.k_init = k_init
         self.sparse = sparse
+        self.sparsity_mask = None
         self.sparse_update = None
 
         self.error = None
@@ -73,14 +74,13 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             print(f'Full Model Size: {w.numel()}')
 
             if self.sparse:
-                self.mask = w != 0
-                w = w[self.mask]
+                self.sparse_update = torch.zeros_like(w)
+                self.sparsity_mask = w != 0
+                w = w[self.sparsity_mask]
                 print(f'Pruned Model Size: {w.numel()}')
+                print(f'Sparsity Mask Size: {self.sparsity_mask.size()}')
 
             self.model_size = w.numel()
-
-            if self.sparse:
-                self.sparse_update = torch.zeros(self.model_size, dtype=torch.float, device=self.dev)
 
             if self.momentum > 0:
                 self.v = torch.zeros(self.model_size, dtype=torch.float, device=self.dev)
@@ -100,12 +100,12 @@ class SparseGradientMFAC(torch.optim.Optimizer):
                 d=self.model_size,
                 nnz=self.k,
                 dev=self.dev,
-                gpus=gpus,
+                gpus=self.gpus,
                 damp=damp)
-            MyLogger.get('optimizer').log(message=self.__class__.__name__)
-            MyLogger.get('optimizer').log(message=self.hinv.__class__.__name__)
+            # MyLogger.get('optimizer').log(message=self.__class__.__name__)
+            # MyLogger.get('optimizer').log(message=self.hinv.__class__.__name__)
 
-        MyLogger.get('optimizer').log(message=f'\n{str(self)}').close()
+        # MyLogger.get('optimizer').log(message=f'\n{str(self)}').close()
 
     def set_named_parameters(self, named_parameters):
         self.named_parameters = named_parameters
@@ -143,12 +143,12 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ########## [2] DISCARD PRUNED ENTRIES FROM GRADIENT
             ##################################################
             if self.sparse:
-                g_dense = g_dense[self.mask] # keep only non-pruned weights
+                g_dense = g_dense[self.sparsity_mask] # keep only non-pruned weights
 
             ##################################################
             ########## [3] ERROR FEEDBACK AND SPARSIFICATION
             ##################################################
-            self.error, acc, acc_topk, mask, topk_indices = apply_topk(
+            self.error, acc, acc_topk, mask_topk, topk_indices = apply_topk(
                 lr=1 if Config.kgmfac.topk_lr_on_update else self.param_groups[0]['lr'],
                 k=self.k,
                 error=self.error,
@@ -186,7 +186,7 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ########## will have full size, but only the 2% values will be updated
             ##################################################
             if self.sparse:
-                self.sparse_update[mask] = update
+                self.sparse_update[self.sparsity_mask] = update
                 update = self.sparse_update
 
             ##################################################
