@@ -27,7 +27,7 @@ class TrainingState:
 
 
 class SparseGradientMFAC(torch.optim.Optimizer):
-    def __init__(self, params, lr, momentum, weight_decay, ngrads, k_init, damp, wd_type, sparse=False, dev=None, gpus=None):
+    def __init__(self, params, ngrads, k_init, lr, damp, wd_type, weight_decay, momentum, sparse=False, dev=None, gpus=None):
         if type(params).__name__ not in ['generator', 'list']:
             params = params.parameters()
 
