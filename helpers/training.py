@@ -1,4 +1,4 @@
-from os.path import join, isfile
+from os.path import join
 from torchvision.models import resnet18, resnet50
 from torch.optim import Adagrad as AdaGradPyTorch
 
@@ -200,17 +200,3 @@ def save_model_params_and_update_at_checkpoint(update, model, root_folder, step)
     params = torch.cat([p.reshape(-1) for p in model.parameters()]).detach().cpu().numpy()
     np.save(file=join(folder, f'model-{step:05d}.pt'), arr=params)
     np.save(file=join(folder, f'update-{step:05d}.pt'), arr=update)
-
-
-def save_to_file(file_name, content):
-    if not isfile(file_name):
-        with open(file_name, 'w') as handle:
-            for name in content:
-                handle.write(f'{name}\n')
-
-
-def get_shape(param):
-    params_count = param.numel()
-    dim1 = param.size()[0]
-    dim2 = int(params_count / dim1)  # compress all other dimensions into a single one
-    return params_count, dim1, dim2
