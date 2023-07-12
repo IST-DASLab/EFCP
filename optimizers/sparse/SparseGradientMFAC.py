@@ -75,7 +75,7 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             if self.sparse:
                 self.mask = w != 0
                 w = w[self.mask]
-                print(f'Pruned Model Size: {w.numel(0)}')
+                print(f'Pruned Model Size: {w.numel()}')
 
             self.model_size = w.numel()
 
