@@ -27,7 +27,7 @@ class TrainingState:
 
 
 class SparseGradientMFAC(torch.optim.Optimizer):
-    def __init__(self, params, lr, momentum, weight_decay, ngrads, k_init, damp, wd_type, dev, gpus):
+    def __init__(self, params, lr, momentum, weight_decay, ngrads, k_init, damp, wd_type, dev, gpus, sparse=False):
         if type(params).__name__ not in ['generator', 'list']:
             params = params.parameters()
 
@@ -45,6 +45,8 @@ class SparseGradientMFAC(torch.optim.Optimizer):
         self.damp = damp
         self.k = None
         self.k_init = k_init
+        self.sparse = sparse
+        self.sparse_update = None
 
         self.error = None
         self.sparsity_gradient = None
@@ -59,14 +61,26 @@ class SparseGradientMFAC(torch.optim.Optimizer):
         super(SparseGradientMFAC, self).__init__(params, dict(lr=self.lr))
 
         with torch.no_grad():
+            w = []
             for group in self.param_groups:
                 for p in group['params']:
-                    self.model_size += p.numel()
+                    w.append(p.reshape(-1))
 
-            print(f'Model size: {self.model_size}')
+            w = torch.cat(w).to(self.dev)
+            print(f'Full Model Size: {w.numel()}')
+
+            if self.sparse:
+                self.mask = w != 0
+                w = w[self.mask]
+                print(f'Pruned Model Size: {w.numel(0)}')
+
+            self.model_size = w.numel()
+
+            if self.sparse:
+                self.sparse_update = torch.zeros(self.model_size, dtype=torch.float, device=self.dev)
 
             if self.momentum > 0:
-                self.v = torch.zeros(self.model_size, device=self.dev)
+                self.v = torch.zeros(self.model_size, dtype=torch.float, device=self.dev)
 
             if len(self.gpus) == 0:
                 self.gpus = [self.dev]
@@ -74,7 +88,6 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ##############################
             ##### INITIALIZATIONS
             ##############################
-
             self.error = torch.zeros(self.model_size).to(self.dev)
             self.k = get_k(numel=self.model_size, k_init=k_init)
 
@@ -115,7 +128,6 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ##################################################
             ########## [1] COLLECT GRADIENT FROM THE MODEL
             ##################################################
-
             if self.wd_type == 'wd':
                 g_dense = get_weights_and_gradients(self.param_groups, get_weights=False)
             elif self.wd_type in ['reg', 'both']:
@@ -124,6 +136,11 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             if torch.isnan(g_dense).sum() > 0:
                 print(f'gradient has NaNs at step {self.steps}')
 
+            ##################################################
+            ########## [2] DISCARD PRUNED ENTRIES FROM GRADIENT
+            ##################################################
+            if self.sparse:
+                g_dense = g_dense[self.mask] # keep only non-pruned weights
 
             ##################################################
             ########## [3] ERROR FEEDBACK AND SPARSIFICATION
@@ -159,6 +176,15 @@ class SparseGradientMFAC(torch.optim.Optimizer):
 
             self.sparsity_gradient = (acc_topk == 0).sum() / self.model_size * 100.
             self.sparsity_update = (update == 0).sum() / self.model_size * 100.
+
+            ##################################################
+            ########## [6] IF SPARSE TRAINING, THEN ASSIGN THE UPDATE AT THE RIGHT INDICES IN A D-DIMENSIONAL ARRAY
+            ########## If model has overall sparsity 98%, then g_dense will have only 2% entries and sparse_update
+            ########## will have full size, but only the 2% values will be updated
+            ##################################################
+            if self.sparse:
+                self.sparse_update[mask] = update
+                update = self.sparse_update
 
             ##################################################
             ########## [7] UPDATE THE MODEL
