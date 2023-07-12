@@ -1,5 +1,5 @@
 from os import makedirs
-from os.path import join
+from os.path import join, isfile
 
 import numpy
 import numpy as np
@@ -14,8 +14,6 @@ import yaml
 import wandb
 import platform
 from tqdm import tqdm
-
-from helpers.training import FOLDER_NUMPY, get_shape, save_to_file, FILE_LAYERS
 
 
 class MA:
@@ -361,3 +359,17 @@ def save_masks_and_plot_heatmaps(model, mask, step, root_folder):
 def save_random_model(model, dataset_name, model_name, seed):
     torch.save(model.state_dict(), join(f'initial_models/{dataset_name}_{model_name}_{seed}.pt'))
     print(f'Saved model {model_name} with seed {seed} for task {dataset_name}')
+
+
+def save_to_file(file_name, content):
+    if not isfile(file_name):
+        with open(file_name, 'w') as handle:
+            for name in content:
+                handle.write(f'{name}\n')
+
+
+def get_shape(param):
+    params_count = param.numel()
+    dim1 = param.size()[0]
+    dim2 = int(params_count / dim1)  # compress all other dimensions into a single one
+    return params_count, dim1, dim2
