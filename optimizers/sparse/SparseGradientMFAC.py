@@ -35,7 +35,7 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             params = params.parameters()
 
         print(f'USING k={k_init*100}%')
-        self.wd_type = wd_type
+        self.wd_type = wd_type if isinstance(wd_type, str) else {0: 'wd', 1: 'reg', 2: 'both'}[wd_type]
         self.cos = torch.nn.CosineSimilarity(dim=0, eps=1e-6)
 
         self.cuda_profile = False
