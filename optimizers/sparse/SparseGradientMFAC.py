@@ -27,7 +27,7 @@ class TrainingState:
 
 
 class SparseGradientMFAC(torch.optim.Optimizer):
-    def __init__(self, params, lr, momentum, weight_decay, ngrads, k_init, damp, wd_type, dev, gpus, sparse=False):
+    def __init__(self, params, lr, momentum, weight_decay, ngrads, k_init, damp, wd_type, sparse=False, dev=None, gpus=None):
         if type(params).__name__ not in ['generator', 'list']:
             params = params.parameters()
 
@@ -40,8 +40,8 @@ class SparseGradientMFAC(torch.optim.Optimizer):
         self.m = ngrads
         self.momentum = momentum
         self.weight_decay = weight_decay
-        self.dev = dev
-        self.gpus = gpus
+        self.dev = dev if dev is not None else get_first_device()
+        self.gpus = gpus if gpus is not None else get_gpus(remove_first=False)
         self.damp = damp
         self.k = None
         self.k_init = k_init
