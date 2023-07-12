@@ -142,8 +142,9 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ##################################################
             ########## [2] DISCARD PRUNED ENTRIES FROM GRADIENT
             ##################################################
-            if self.sparse:
-                g_dense = g_dense[self.sparsity_mask] # keep only non-pruned weights
+            if self.sparse:  # keep only non-pruned weights
+                w = w[self.sparsity_mask]
+                g_dense = g_dense[self.sparsity_mask]
 
             ##################################################
             ########## [3] ERROR FEEDBACK AND SPARSIFICATION

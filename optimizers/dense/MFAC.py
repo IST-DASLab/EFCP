@@ -1,16 +1,12 @@
 # Contains a full implementation of the dynamic algorithm and the M-FAC optimizer
 
-import sys
 import wandb
 import torch
 import torch.nn as nn
 import numpy as np
 
-from helpers.optim import quantify_preconditioning, get_different_params_norm, get_cos_and_angle
 from helpers.tools import get_first_device, get_gpus
 from helpers.mylogger import MyLogger
-from helpers.damp_scheduling import ContinuousDamping, KeepRatioDamping
-from optimizers.config import Config
 from helpers.optim import get_weights_and_gradients, update_model
 
 # Disable tensor cores as they can mess with precision
@@ -155,15 +151,19 @@ class HInvFastUpMulti:
 
 
 class DenseMFAC(torch.optim.Optimizer):
-    def __init__(self, params, lr, momentum, weight_decay, ngrads, damp, wd_type, dev, gpus):
-        self.wd_type = wd_type
+    def __init__(self, params, ngrads, lr, damp, wd_type, weight_decay, momentum, sparse=False, dev=None, gpus=None):
+        self.wd_type = wd_type if isinstance(wd_type, str) else {0: 'wd', 1: 'reg', 2: 'both'}[wd_type]
         self.m = ngrads
         self.lr = lr
         self.damp = damp
         self.momentum = momentum
         self.weight_decay = weight_decay
-        self.dev = dev
+        self.dev = dev if dev is not None else get_first_device()
+        self.gpus = gpus if gpus is not None else get_gpus(remove_first=False)
         self.model_size = None
+        self.sparse = sparse
+        self.sparsity_mask = None
+        self.sparse_update = None
 
         self.steps = 0
         self.named_parameters = None
@@ -173,22 +173,35 @@ class DenseMFAC(torch.optim.Optimizer):
         super(DenseMFAC, self).__init__(params, dict(lr=lr))
 
         with torch.no_grad():
-            self.model_size = sum([p.numel() for group in self.param_groups for p in group['params']])
-            print(f'Model size: {self.model_size}')
+            w = []
+            for group in self.param_groups:
+                for p in group['params']:
+                    w.append(p.reshape(-1))
+            w = torch.cat(w).to(self.dev)
+            print(f'Full Model Size: {w.numel()}')
+
+            if self.sparse:
+                self.sparse_update = torch.zeros_like(w)
+                self.sparsity_mask = w != 0
+                w = w[self.sparsity_mask]
+                print(f'Pruned Model Size: {w.numel()}')
+                print(f'Sparsity Mask Size: {self.sparsity_mask.size()}')
+
+            self.model_size = w.numel()
 
             if self.momentum > 0:
                 self.v = torch.zeros(self.model_size, device=self.dev)
 
-            if len(gpus) == 0:
-                gpus = [self.dev]
+            if gpus is None or len(gpus) == 0:
+                self.gpus = [self.dev]
 
             self.hinv = HInvFastUpMulti(
                 grads=torch.zeros((ngrads, self.model_size), dtype=torch.float),
                 dev=self.dev,
-                gpus=gpus,
+                gpus=self.gpus,
                 damp=damp)
 
-        MyLogger.get('optimizer').log(message=f'{str(self)}').close()
+        # MyLogger.get('optimizer').log(message=f'{str(self)}').close()
 
     def set_named_parameters(self, named_parameters):
         self.named_parameters = named_parameters
@@ -208,12 +221,17 @@ class DenseMFAC(torch.optim.Optimizer):
 
         if self.wd_type == 'wd':
             g = get_weights_and_gradients(self.param_groups, get_weights=False)
-            update = self.hinv.integrate_gradient_and_precondition(g, x=g)
         elif self.wd_type in ['reg', 'both']:
             w, g = get_weights_and_gradients(self.param_groups, get_weights=True)
+
+        if self.sparse:
+            w = w[self.sparsity_mask]
+            g = g[self.sparsity_mask]
+
+        if self.wd_type == 'wd':
+            update = self.hinv.integrate_gradient_and_precondition(g, x=g)
+        elif self.wd_type in ['reg', 'both']:
             update = self.hinv.integrate_gradient_and_precondition(g, x=g + self.weight_decay * w)
-        else:
-            raise RuntimeError(f'Invalid wd_type: {self.wd_type}')
 
         if self.momentum > 0:
             self.v = self.momentum * self.v + update
@@ -221,7 +239,15 @@ class DenseMFAC(torch.optim.Optimizer):
 
         update = update.to(self.dev)
 
-        shrinking_factor = update_model(params=self.param_groups, update=update, wd_type=self.wd_type, alpha=None)
+        if self.sparse:
+            self.sparse_update[self.sparsity_mask] = update
+            update = self.sparse_update
+
+        shrinking_factor = update_model(
+            params=self.param_groups,
+            update=update,
+            wd_type=self.wd_type,
+            alpha=None)
 
         lr = self.param_groups[0]['lr']
         self.wandb_data.update({f'norm_upd_w_lr': lr * update.norm(p=2), f'shrinking_factor': shrinking_factor})
