@@ -221,12 +221,14 @@ class DenseMFAC(torch.optim.Optimizer):
 
         if self.wd_type == 'wd':
             g = get_weights_and_gradients(self.param_groups, get_weights=False)
+            w = None
         elif self.wd_type in ['reg', 'both']:
             w, g = get_weights_and_gradients(self.param_groups, get_weights=True)
 
         if self.sparse:
-            w = w[self.sparsity_mask]
             g = g[self.sparsity_mask]
+            if w is not None:
+                w = w[self.sparsity_mask]
 
         if self.wd_type == 'wd':
             update = self.hinv.integrate_gradient_and_precondition(g, x=g)

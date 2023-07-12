@@ -132,6 +132,7 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ########## [1] COLLECT GRADIENT FROM THE MODEL
             ##################################################
             if self.wd_type == 'wd':
+                w = None
                 g_dense = get_weights_and_gradients(self.param_groups, get_weights=False)
             elif self.wd_type in ['reg', 'both']:
                 w, g_dense = get_weights_and_gradients(self.param_groups, get_weights=True)
@@ -143,8 +144,9 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ########## [2] DISCARD PRUNED ENTRIES FROM GRADIENT
             ##################################################
             if self.sparse:  # keep only non-pruned weights
-                w = w[self.sparsity_mask]
                 g_dense = g_dense[self.sparsity_mask]
+                if w is not None:
+                    w = w[self.sparsity_mask]
 
             ##################################################
             ########## [3] ERROR FEEDBACK AND SPARSIFICATION
