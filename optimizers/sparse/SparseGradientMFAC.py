@@ -1,8 +1,11 @@
+import torch
+import wandb
+
 from helpers.mylogger import MyLogger
 from helpers.optim import apply_topk, get_k, quantify_preconditioning, get_weights_and_gradients, update_model, get_different_params_norm
 from helpers.layer_manipulation import get_batchnorm_mask, get_layer_indices
 from helpers.damp_scheduling import ContinuousDamping, TikhonovDamping, KeepRatioDamping
-from helpers.tools import *
+from helpers.tools import get_first_device, get_gpus
 from optimizers.sparse.SparseHinvSequential import SparseHinvSequential
 from optimizers.config import Config
 
