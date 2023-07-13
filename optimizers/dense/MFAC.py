@@ -7,7 +7,7 @@ import numpy as np
 
 from helpers.tools import get_first_device, get_gpus
 from helpers.mylogger import MyLogger
-from helpers.optim import get_weights_and_gradients, update_model
+from helpers.optim import update_model, get_gradients, get_weights
 
 # Disable tensor cores as they can mess with precision
 torch.backends.cuda.matmul.allow_tf32 = False
@@ -220,10 +220,11 @@ class DenseMFAC(torch.optim.Optimizer):
         self.steps += 1
 
         if self.wd_type == 'wd':
-            g = get_weights_and_gradients(self.param_groups, get_weights=False)
             w = None
+            g = get_gradients(self.param_groups)
         elif self.wd_type in ['reg', 'both']:
-            w, g = get_weights_and_gradients(self.param_groups, get_weights=True)
+            w = get_weights(self.param_groups)
+            g = get_gradients(self.param_groups)
 
         if self.sparse:
             g = g[self.sparsity_mask]

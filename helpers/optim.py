@@ -56,20 +56,19 @@ def get_different_params_norm(named_params):
         norm_conv=math.sqrt(norm_conv))
 
 
-def get_weights_and_gradients(params, get_weights):
-    """
-        This method returns:
-        - w: the raw weights collected from the model if get_weights=True
-        - g: the gradients (without WD added)
-    """
-    w, g = [], []
+def get_weights(params):
+    w = []
     for group in params:
         for p in group['params']:
-            if get_weights:
-                w.append(p.reshape(-1))
+            w.append(p.reshape(-1))
+    return torch.cat(w)
+
+
+def get_gradients(params):
+    g = []
+    for group in params:
+        for p in group['params']:
             g.append(p.grad.reshape(-1))
-    if get_weights:
-        return torch.cat(w), torch.cat(g)
     return torch.cat(g)
 
 

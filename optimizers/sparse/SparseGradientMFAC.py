@@ -2,7 +2,7 @@ import torch
 import wandb
 
 from helpers.mylogger import MyLogger
-from helpers.optim import apply_topk, get_k, quantify_preconditioning, get_weights_and_gradients, update_model, get_different_params_norm
+from helpers.optim import apply_topk, get_k, quantify_preconditioning, update_model, get_different_params_norm, get_gradients, get_weights
 from helpers.layer_manipulation import get_batchnorm_mask, get_layer_indices
 from helpers.damp_scheduling import ContinuousDamping, TikhonovDamping, KeepRatioDamping
 from helpers.tools import get_first_device, get_gpus
@@ -133,9 +133,10 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ##################################################
             if self.wd_type == 'wd':
                 w = None
-                g_dense = get_weights_and_gradients(self.param_groups, get_weights=False)
+                g_dense = get_gradients(self.param_groups)
             elif self.wd_type in ['reg', 'both']:
-                w, g_dense = get_weights_and_gradients(self.param_groups, get_weights=True)
+                w = get_weights(self.param_groups)
+                g_dense = get_gradients(self.param_groups)
 
             if torch.isnan(g_dense).sum() > 0:
                 print(f'gradient has NaNs at step {self.steps}')

@@ -1,6 +1,6 @@
 import torch
 import wandb
-from helpers.optim import get_weights_and_gradients, update_model, quantify_preconditioning, get_different_params_norm, get_k, apply_topk
+from helpers.optim import update_model, quantify_preconditioning, get_different_params_norm, get_k, apply_topk, get_gradients, get_weights
 from helpers.tools import get_sparsity
 
 
@@ -42,9 +42,11 @@ class SparseAdaGrad(torch.optim.Optimizer):
         self.steps += 1
 
         if self.wd_type == 'wd':
-            g = get_weights_and_gradients(self.param_groups, get_weights=False)
+            g = get_gradients(self.param_groups)
         elif self.wd_type in ['reg', 'both']:
-            w, g = get_weights_and_gradients(self.param_groups, get_weights=True)
+            w = get_weights(self.param_groups)
+            g = get_gradients(self.param_groups)
+            # TODO: review this if and update_model method
             if self.weight_decay > 0:
                 w.mul_(self.weight_decay)
                 g.add_(w)
