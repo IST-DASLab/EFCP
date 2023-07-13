@@ -200,6 +200,7 @@ class SparseGradientMFAC(torch.optim.Optimizer):
                 params=self.param_groups,
                 update=update,
                 wd_type=self.wd_type,
+                weight_decay=self.weight_decay,
                 alpha=None)
 
             ##################################################

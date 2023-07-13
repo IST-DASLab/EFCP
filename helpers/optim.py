@@ -73,7 +73,7 @@ def get_weights_and_gradients(params, get_weights):
     return torch.cat(g)
 
 
-def update_model(params, update, wd_type, alpha=None):
+def update_model(params, update, wd_type, weight_decay=0, alpha=None):
     """
         Applies the `update` to the model
         When alpha=None, alpha is set to lr in the group
@@ -82,7 +82,7 @@ def update_model(params, update, wd_type, alpha=None):
     count = 0
     for group in params:
         lr = group['lr']
-        wd = group.get('weight_decay', 0)
+        wd = group.get('weight_decay', weight_decay) # if the param groups do not have weight decay, then use the external one
         # lr_wd = lr * wd
         for p in group['params']:
             u = update[count:(count + p.numel())].reshape(p.shape).to(p.device) # move the update from its custom GPU to the device of parameter
