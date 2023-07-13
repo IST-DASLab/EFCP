@@ -1,19 +1,19 @@
 import sys
 import os
 sys.path.append(os.environ['EFCP_ROOT'])
-import warnings; warnings.filterwarnings("ignore")
-from optimizers.SWA import SWA
-from optimizers.MySGD import MySGD
-from optimizers.SparseGradDenseUpdateMFAC import SparseGradDenseUpdateMFAC
-from optimizers.LayerWiseMFAC import LayerWiseMFAC
+import warnings
+warnings.filterwarnings("ignore")
+from optimizers.dense.SWA import SWA
+from optimizers.dense.MySGD import MySGD
+from optimizers.sparse.SparseGradientMFAC import SparseGradientMFAC
+# from optimizers.LayerWiseMFAC import LayerWiseMFAC
 from helpers.tools import setup_wandb, get_first_device, get_gpus, set_all_seeds, mkdirs, get_gpu_mem_usage
-from helpers.optim import get_weights_and_gradients
+from helpers.optim import get_weights, get_gradients
 from helpers.layer_manipulation import get_resnet_layer_indices_and_params
 from helpers.mylogger import MyLogger
-from optimizers.mfac import OriginalMFAC
+from optimizers.dense.MFAC import DenseMFAC
 from optimizers.config import Config
-from optimizers.PyTorchSGD import PyTorchSGD
-import models_no_bn
+from optimizers.dense.PyTorchSGD import PyTorchSGD
 import inspect
 
 import torch
@@ -435,7 +435,7 @@ class ImageNetTrainer:
             #     print('***** USING TORCH SGD BECAUSE TRAINING IS FROM SCRATCH')
             #     self.optimizer = torch.optim.SGD(param_groups, lr=1, momentum=momentum)
         elif optimizer == 'mfac':
-            self.optimizer = OriginalMFAC(
+            self.optimizer = DenseMFAC(
                 param_groups,
                 lr=lr,
                 momentum=momentum,
@@ -454,27 +454,27 @@ class ImageNetTrainer:
                 optdev=get_first_device(),
                 gpus=get_gpus(remove_first=False),
                 sparse=False)
-        elif optimizer == 'lwmfac':
-            self.optimizer = LayerWiseMFAC(
-                param_groups,
-                model=self.model,
-                lr=lr,
-                momentum=momentum,
-                weight_decay=weight_decay,
-                ngrads=ngrads,
-                damp=damp,
-                fix_scaling=False,
-                adaptive_damp=bool(adaptive_damp),
-                empty_buffer_on_decay=False,
-                grad_norm_recovery=False,
-                rescaling_kfac64=bool(rescaling_kfac64),
-                grad_momentum=0,
-                moddev=get_first_device(),
-                optdev=get_first_device(),
-                gpus=get_gpus(remove_first=False),
-                sparse=False)
+        # elif optimizer == 'lwmfac':
+        #     self.optimizer = LayerWiseMFAC(
+        #         param_groups,
+        #         model=self.model,
+        #         lr=lr,
+        #         momentum=momentum,
+        #         weight_decay=weight_decay,
+        #         ngrads=ngrads,
+        #         damp=damp,
+        #         fix_scaling=False,
+        #         adaptive_damp=bool(adaptive_damp),
+        #         empty_buffer_on_decay=False,
+        #         grad_norm_recovery=False,
+        #         rescaling_kfac64=bool(rescaling_kfac64),
+        #         grad_momentum=0,
+        #         moddev=get_first_device(),
+        #         optdev=get_first_device(),
+        #         gpus=get_gpus(remove_first=False),
+        #         sparse=False)
         elif optimizer == 'kgmfac':
-            self.optimizer = SparseGradDenseUpdateMFAC(
+            self.optimizer = SparseGradientMFAC(
                 param_groups,
                 lr=lr,
                 momentum=momentum,
@@ -482,22 +482,7 @@ class ImageNetTrainer:
                 ngrads=ngrads,
                 k_init=k,
                 damp=damp,
-                wd_type=wd_type,
-                fix_scaling=False,
-                grad_norm_recovery=False,
-                grad_momentum=0,
-                use_ef=bool(use_ef),
-                adaptive_damp=bool(adaptive_damp),
-                damp_type='kr',
-                # damp_rule='L', # doesn't matter when adaptive_damp=False
-                # use_bias_correction=False, # default
-                # use_grad_for_gnr=False, # default
-                # sparse=False, # default
-                # model=None, # default
-                dev=get_first_device(),
-                gpus=get_gpus(remove_first=False),
-                use_sparse_tensors=True,
-                use_sparse_cuda=True)
+                wd_type=wd_type)
         if hasattr(self.optimizer, 'set_named_parameters'):
             self.optimizer.set_named_parameters(list(self.model.named_parameters()))
         self.loss = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
@@ -717,8 +702,9 @@ class ImageNetTrainer:
     @param('custom.use_bn_model')
     def create_model_and_scaler(self, arch, pretrained, distributed, use_blurpool, use_bn_model):
         scaler = GradScaler()
-        module, arch = (models, arch) if bool(use_bn_model) else (models_no_bn, f'{arch}nobn')
-        model = getattr(module, arch)(pretrained=pretrained)
+        # module, arch = (models, arch) if bool(use_bn_model) else (models_no_bn, f'{arch}nobn') # old version
+        # model = getattr(module, arch)(pretrained=pretrained)
+        model = getattr(models, arch)(pretrained=pretrained)
 
         def apply_blurpool(mod: torch.nn.Module):
             for (name, child) in mod.named_children():
@@ -758,7 +744,7 @@ class ImageNetTrainer:
                 loss_train = self.loss(output, target)
             loss_train.backward()
             # self.scaler.scale(loss_train).backward()
-            g = get_weights_and_gradients(self.optimizer.param_groups, get_weights=False)
+            g = get_gradients(self.optimizer.param_groups)
             self.optimizer.hinv.update(g)
             # self.scaler.update()
 
