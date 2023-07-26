@@ -37,7 +37,7 @@ class BaseBlockAdam(torch.optim.Optimizer):
         self.main_device = get_first_device()
         self.gpus = get_gpus(remove_first=False)
 
-        w = get_weights(params)
+        w = get_weights(self.param_groups)
 
         if self.sparse:
             self.sparse_update = torch.zeros_like(w)
