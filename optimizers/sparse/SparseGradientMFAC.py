@@ -156,7 +156,7 @@ class SparseGradientMFAC(torch.optim.Optimizer):
                 lr=1 if Config.kgmfac.topk_lr_on_update else self.param_groups[0]['lr'],
                 k=self.k,
                 error=self.error,
-                vector=g_dense,
+                vector=g_dense.to(self.dev),
                 use_ef=True,
                 device=self.dev,
                 layerwise_index_pairs=None)
