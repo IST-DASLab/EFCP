@@ -270,6 +270,7 @@ def get_gpus(remove_first):
     if remove_first:
         gpus.remove(get_first_device())
     print(f'GPUs: {gpus}')
+    print(f'CUDA_VISIBLE_DEVICES={os.environ["CUDA_VISIBLE_DEVICES"]}')
     return gpus
 
 
