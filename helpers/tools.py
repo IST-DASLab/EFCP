@@ -254,6 +254,8 @@ def norm(v):
 
 
 def get_first_device():
+    if torch.distributed.is_available():
+        return torch.device(f'cuda:{torch.distributed.get_rank()}')
     if not torch.cuda.is_available():
         return torch.device('cpu')
     return torch.device('cuda:0')
