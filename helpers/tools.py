@@ -262,6 +262,11 @@ def get_first_device():
 def get_gpus(remove_first):
     if not torch.cuda.is_available():
         return ['cpu']
+
+    if torch.distributed.is_initialized():
+        gpus = [f'cuda:{torch.distributed.get_rank()}']
+        return gpus
+
     if torch.cuda.device_count() == 1:
         return [get_first_device()]
 
