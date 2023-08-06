@@ -263,7 +263,7 @@ def get_gpus(remove_first):
     if not torch.cuda.is_available():
         return ['cpu']
 
-    if torch.distributed.is_initialized():
+    if torch.distributed.is_available():
         gpus = [f'cuda:{torch.distributed.get_rank()}']
         return gpus
 
