@@ -23,6 +23,7 @@ def get_first_device():
 
 
 def get_gpus(remove_first):
+    raise RuntimeError('The get_gpus method in helpers/tools.py was changed to work with DDP. Please update this method from asdl repo in EFCP')
     if not torch.cuda.is_available():
         return ['cpu']
     if torch.cuda.device_count() == 1:
