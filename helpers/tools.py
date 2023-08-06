@@ -265,15 +265,14 @@ def get_gpus(remove_first):
 
     if torch.distributed.is_available():
         gpus = [f'cuda:{torch.distributed.get_rank()}']
-        return gpus
-
-    if torch.cuda.device_count() == 1:
-        return [get_first_device()]
-
-    gpus = [torch.device(f'cuda:{i}') for i in range(len(os.environ['CUDA_VISIBLE_DEVICES'].split(',')))]
-    print(f'Device: {get_first_device()}')
-    if remove_first:
-        gpus.remove(get_first_device())
+    else:
+        if torch.cuda.device_count() == 1:
+            gpus = [get_first_device()]
+        else:
+            gpus = [torch.device(f'cuda:{i}') for i in range(len(os.environ['CUDA_VISIBLE_DEVICES'].split(',')))]
+            if remove_first:
+                print(f'Removing first device {get_first_device()}')
+                gpus.remove(get_first_device())
     print(f'GPUs: {gpus}')
     print(f'CUDA_VISIBLE_DEVICES={os.environ["CUDA_VISIBLE_DEVICES"]}')
     return gpus
