@@ -207,25 +207,33 @@ class SparseGradientMFAC(torch.optim.Optimizer):
             ##################################################
             ########## LOGS
             ##################################################
-            self.wandb_data.update(dict(
-                # new_cos_g_a=self.cos(g_dense, acc),        # rotation induced by error feedback over g
-                # new_cos_g_TKa=self.cos(g_dense, acc_topk), # rotation induced by EF and TopK over g
-                # new_cos_g_u=self.cos(g_dense, update),     # rotation induced by EF, TopK and preconditioning over g
-                # new_cos_a_TKa=self.cos(acc, acc_topk),     # rotation induced by TopK over the accumulator
-                # new_cos_a_u=self.cos(acc, update),         # rotation induced by TopK and preconditioning over accumulator
-                # new_cos_TKa_u=self.cos(acc_topk, update),  # rotation induced by preconditioning over the sparse accumulator
+            def log_func():
+                self.wandb_data.update(dict(
+                    # new_cos_g_a=self.cos(g_dense, acc),        # rotation induced by error feedback over g
+                    # new_cos_g_TKa=self.cos(g_dense, acc_topk), # rotation induced by EF and TopK over g
+                    # new_cos_g_u=self.cos(g_dense, update),     # rotation induced by EF, TopK and preconditioning over g
+                    # new_cos_a_TKa=self.cos(acc, acc_topk),     # rotation induced by TopK over the accumulator
+                    # new_cos_a_u=self.cos(acc, update),         # rotation induced by TopK and preconditioning over accumulator
+                    # new_cos_TKa_u=self.cos(acc_topk, update),  # rotation induced by preconditioning over the sparse accumulator
 
-                new_norm_g=g_dense.norm(p=2),
-                new_norm_error=self.error.norm(p=2),
-                new_norm_acc=acc.norm(p=2),
-                new_norm_TKa=acc_topk.norm(p=2),
-                new_norm_u=update.norm(p=2),
-            )) # computed new_* metrics on March 9th
-            self.wandb_data.update(dict(norm_upd_w_lr=lr * update.norm(p=2), shrinking_factor=shrinking_factor))
-            # self.wandb_data.update(quantify_preconditioning(g=g_dense, u=update, return_distribution=False, use_abs=True))
-            self.wandb_data.update(self.hinv.wandb_data)
-            # self.wandb_data.update(get_different_params_norm(self.named_parameters))
-            wandb.log(self.wandb_data)
+                    new_norm_g=g_dense.norm(p=2),
+                    new_norm_error=self.error.norm(p=2),
+                    new_norm_acc=acc.norm(p=2),
+                    new_norm_TKa=acc_topk.norm(p=2),
+                    new_norm_u=update.norm(p=2),
+                ))  # computed new_* metrics on March 9th
+                self.wandb_data.update(dict(norm_upd_w_lr=lr * update.norm(p=2), shrinking_factor=shrinking_factor))
+                # self.wandb_data.update(quantify_preconditioning(g=g_dense, u=update, return_distribution=False, use_abs=True))
+                self.wandb_data.update(self.hinv.wandb_data)
+                # self.wandb_data.update(get_different_params_norm(self.named_parameters))
+                wandb.log(self.wandb_data)
+
+            if torch.distributed.is_available():
+                rank = torch.distributed.get_rank()
+                if rank == 0:
+                    log_func()
+            else:
+                log_func()
 
             ##################################################
             ########## END STEP METHOD
