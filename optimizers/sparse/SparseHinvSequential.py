@@ -54,7 +54,7 @@ class SparseHinvSequential:
         self.lambd = None
         self.set_damp(damp)
 
-        self.gpus = get_gpus(remove_first=False)
+        # self.gpus = get_gpus(remove_first=False)
         self.gpus_count = len(self.gpus)
         self.gpus_cols = int(self.nnz / self.gpus_count) + 1
 
