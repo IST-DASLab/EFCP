@@ -1,9 +1,11 @@
 import torch
 import wandb
 
+from helpers.tools import get_first_device
+
 
 class MyAdam(torch.optim.Optimizer):
-    def __init__(self, params, lr, weight_decay=0, device='cuda:0', beta1=0.9, beta2=0.999, eps=1e-8):
+    def __init__(self, params, lr, weight_decay=0, beta1=0.9, beta2=0.999, eps=1e-8, use_sqrt=True):
         super(MyAdam, self).__init__(params, dict(lr=lr, weight_decay=weight_decay, beta1=beta1, beta2=beta2, eps=eps))
 
         self.lr = lr
@@ -11,11 +13,17 @@ class MyAdam(torch.optim.Optimizer):
         self.beta1 = beta1
         self.beta2 = beta2
         self.eps = eps
-        self.device = device
+        self.device = get_first_device()
 
         self.bias_corr1 = 1
         self.bias_corr2 = 1
         self.steps = 0
+
+        self.use_sqrt = use_sqrt
+        if self.use_sqrt:
+            print('USE SQRT')
+        else:
+            print('NOT USING SQRT')
 
         self.m = None # torch.zeros_like(g, dtype=torch.float, device=self.device)
         self.v = None # torch.zeros_like(g, dtype=torch.float, device=self.device)
@@ -50,7 +58,7 @@ class MyAdam(torch.optim.Optimizer):
             self.m = torch.zeros_like(g, dtype=torch.float, device=self.device)
             self.v = torch.zeros_like(g, dtype=torch.float, device=self.device)
 
-        norm_g = torch.norm(g, p=2)
+        # norm_g = torch.norm(g, p=2)
 
         self.m = self.beta1 * self.m + (1 - self.beta1) * g
         g.mul_(g) # compute g**2 in place
@@ -61,7 +69,10 @@ class MyAdam(torch.optim.Optimizer):
 
         m_debiased = self.m / (1 - self.bias_corr1)
         v_debiased = self.v / (1 - self.bias_corr2)
-        update = m_debiased / (v_debiased.sqrt() + self.eps)
+        if self.use_sqrt:
+            update = m_debiased / (v_debiased.sqrt() + self.eps)
+        else:
+            update = m_debiased / (v_debiased + self.eps)
 
         count = 0
         for group in self.param_groups:
@@ -70,9 +81,9 @@ class MyAdam(torch.optim.Optimizer):
                 count += p.numel()
 
         wandb.log(dict(
-            norm_g=norm_g,
-            norm_m=torch.norm(self.m, p=2),
-            norm_v=torch.norm(self.v, p=2),
-            norm_m_db=torch.norm(m_debiased, p=2),
-            norm_v_db=torch.norm(v_debiased, p=2),
             norm_u=torch.norm(update, p=2)))
+        #     norm_g=norm_g,
+        #     norm_m=torch.norm(self.m, p=2),
+        #     norm_v=torch.norm(self.v, p=2),
+        #     norm_m_db=torch.norm(m_debiased, p=2),
+        #     norm_v_db=torch.norm(v_debiased, p=2))
