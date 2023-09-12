@@ -58,11 +58,17 @@ class MyAdam(torch.optim.Optimizer):
             self.m = torch.zeros_like(g, dtype=torch.float, device=self.device)
             self.v = torch.zeros_like(g, dtype=torch.float, device=self.device)
 
-        # norm_g = torch.norm(g, p=2)
+        g_min = g.min()
+        g_max = g.max()
+        g_norm = torch.norm(g, p=2)
 
         self.m = self.beta1 * self.m + (1 - self.beta1) * g
         g.mul_(g) # compute g**2 in place
         self.v = self.beta2 * self.v + (1 - self.beta2) * g
+
+        g2_min = g.min()
+        g2_max = g.max()
+        g2_norm = torch.norm(g, p=2)
 
         self.bias_corr1 *= self.beta1
         self.bias_corr2 *= self.beta2
@@ -79,11 +85,15 @@ class MyAdam(torch.optim.Optimizer):
             for p in group['params']:
                 p.add_(update[count:(count + p.numel())].reshape(p.shape), alpha=-group['lr'])
                 count += p.numel()
-
-        wandb.log(dict(
-            norm_u=torch.norm(update, p=2)))
-        #     norm_g=norm_g,
-        #     norm_m=torch.norm(self.m, p=2),
-        #     norm_v=torch.norm(self.v, p=2),
-        #     norm_m_db=torch.norm(m_debiased, p=2),
-        #     norm_v_db=torch.norm(v_debiased, p=2))
+        if torch.distributed.is_available():
+            rank = torch.distributed.get_rank()
+            if rank == 0:
+                wandb.log(dict(
+                    norm_u=torch.norm(update, p=2),
+                    g_min=g_min,
+                    g_max=g_max,
+                    g2_min=g2_min,
+                    g2_max=g2_max,
+                    g_norm=g_norm,
+                    g2_norm=g2_norm
+                ))
